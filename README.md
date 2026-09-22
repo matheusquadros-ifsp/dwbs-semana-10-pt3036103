@@ -1,51 +1,72 @@
-# Aula 060.C. Funções, listagem, contadores e e-mail
+# Aula 060.C. Funções, listagem, contadores e e-mail (SendGrid API)
 
-Mesmo funcionamento da versão anterior (formulário nome + função, listagens,
-contadores). Adicionado: a cada novo usuário cadastrado (não reenvio de um
-já existente), um e-mail é disparado via SendGrid (relay SMTP) para
-`flaskaulasweb@zohomail.com` e `matheus.quadros@aluno.ifsp.edu.br`.
+Formulário (nome + função) com persistência em SQLite, listagens/contadores
+de usuários e funções, e envio de e-mail via **SendGrid (API HTTP, SDK
+oficial `sendgrid`)** sempre que um usuário novo é cadastrado.
 
-## Antes do deploy
+## 1. Limpar resíduos de semanas anteriores (se houver)
 
-Crie um arquivo `.env` na raiz do projeto (mesmo nível do `hello.py`) com:
-
-```
-API_KEY=sua_api_key_do_sendgrid
-```
-
-(`.env` está no `.gitignore` — não sobe pro Git. Veja `.env.example`.)
-
-**Importante:** o remetente configurado é `flaskaulasweb@zohomail.com`. Esse
-endereço precisa estar verificado no SendGrid (Single Sender Verification ou
-domínio autenticado), senão o envio falha — mas isso não derruba o cadastro:
-o erro só é logado (aba Web → Error log).
-
-## Deploy no PythonAnywhere
-
-Se já existir `migrations/` ou `data.sqlite` de uma semana anterior, apague:
+No diretório da aplicação (`~/flasky`):
 
 ```bash
 rm -rf migrations
 rm -f data.sqlite
 ```
 
-Depois:
+## 2. Trazer o código deste repositório
 
 ```bash
 chmod 777 change_repo.sh
 ./change_repo.sh <link-do-repo>
+```
+
+## 3. Ambiente virtual e dependências
+
+Se o venv já existir e estiver ativo (prompt mostrando `(venv)`), só instale
+as dependências:
+
+```bash
 pip install -r requirements/common.txt
+```
+
+(Isso inclui o pacote `sendgrid`, usado agora no lugar do Flask-Mail.)
+
+## 4. Criar o `.env`
+
+Na raiz do projeto (mesmo nível do `hello.py`):
+
+```bash
+nano .env
+```
+Conteúdo (sem aspas, sem espaços em volta do `=`):
+```
+API_KEY=sua_api_key_do_sendgrid
+```
+Salvar: `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+**Importante:** o remetente fixo no código é `matheus.quadros@aluno.ifsp.edu.br`
+— esse endereço precisa estar verificado no SendGrid (Settings → Sender
+Authentication → Single Sender Verification), senão o envio é rejeitado.
+
+## 5. Banco de dados
+
+```bash
 export FLASK_APP=hello.py
 flask db init
 flask db migrate -m "Initial migration"
 flask db upgrade
 ```
 
-Reload na aba **Web**.
+## 6. Reload
 
-## Testar o envio manualmente
+Aba **Web** → **Reload**.
+
+## 7. Testar o envio de e-mail direto (sem passar pela thread)
 
 ```bash
 flask shell
->>> send_new_user_notification('Teste')
+>>> send_async_email('Teste')
 ```
+Isso imprime na hora o status code (202 = aceito pelo SendGrid) ou o erro,
+se houver. Depois, confira em SendGrid → Activity Feed se o e-mail aparece
+como *Delivered*.
